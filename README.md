@@ -54,7 +54,7 @@ How To Install
 Known Issues
 ============
 
-- None
+- Source website has missing videos for some older content.
 
 
 Changelog
