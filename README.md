@@ -63,6 +63,7 @@ Changelog
 =========
 
 **0.02** - 11/06/14 - Added trailers, search and bookmarks. Removed URL service.
+
 **0.01** - 09/06/14 - Initial release.
 
 Donate
