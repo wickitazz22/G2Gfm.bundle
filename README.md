@@ -13,15 +13,19 @@ System Requirements
 	- Tested Working:
 		- Windows
 		- Mac OSX
+		- Linux
 		
 	- Not Working:
-		- ARM based NAS (Transcoding required)
+		- ARM based NAS (Transcoding may be required)
 
 - **Plex Clients:**
 
 	- Tested Working:
 		- Plex Media Centre / Home Theater
 		- Plex/Web
+		- Roku
+		- iOS
+		- LG Smart TV
 		
 	- Tested Not Working:
 		- Android
@@ -30,11 +34,8 @@ System Requirements
 	- Not Tested:
 		- Windows 8
 		- PS3/360
-		- Roku
-		- iOS
-		- Roku
 		- Windows Phone
-		- LG, Samsung Google Smart TV
+		- Samsung Google Smart TV
 		- Ouya
 
 How To Install
@@ -54,12 +55,14 @@ How To Install
 Known Issues
 ============
 
+- No metadata info on final video page.
 - Source website has missing videos for some older content.
 
 
 Changelog
 =========
 
+**0.02** - 11/06/14 - Added trailers, search and bookmarks. Removed URL service, now calls built-in Google Drive service.
 **0.01** - 09/06/14 - Initial release.
 
 Donate
