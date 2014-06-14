@@ -1,6 +1,6 @@
 ######################################################################################
 #
-#	G2G.fm (BY TEHCRUCIBLE) - v0.02
+#	G2G.fm (BY TEHCRUCIBLE) - v0.03
 #
 ######################################################################################
 
@@ -40,10 +40,11 @@ def Start():
 def MainMenu():
 
 	oc = ObjectContainer()
-	oc.add(DirectoryObject(key = Callback(ShowCategory, title="Movies", category = "/movies", page_count = 1), title = "Movies", thumb = R(ICON_MOVIES), summary = "Watch the latest movies in HD!"))
-	oc.add(DirectoryObject(key = Callback(ShowCategory, title="TV Series", category = "/tvseries", page_count = 1), title = "TV Series", thumb = R(ICON_SERIES), summary = "Watch the most popular TV series in HD!"))
-	oc.add(DirectoryObject(key = Callback(ShowCategory, title="Latest Episodes", category = "/episodes", page_count = 1), title = "Latest Episodes", thumb = R(ICON_SERIES), summary = "See the most recently aired episodes!"))
-	oc.add(DirectoryObject(key = Callback(Bookmarks, title="My Bookmarks"), title = "My Bookmarks", thumb = R(ICON_QUEUE), summary = "View your bookmarked videos."))
+	oc.add(DirectoryObject(key = Callback(ShowCategory, title="Movies", category = "/movies", page_count = 1), title = "Movies", thumb = R(ICON_MOVIES)))
+	oc.add(DirectoryObject(key = Callback(ShowCategory, title="TV Series", category = "/tvseries", page_count = 1), title = "TV Series", thumb = R(ICON_SERIES)))
+	oc.add(DirectoryObject(key = Callback(ShowCategory, title="Latest Episodes", category = "/episodes", page_count = 1), title = "Latest Episodes", thumb = R(ICON_SERIES)))
+	oc.add(DirectoryObject(key = Callback(GenreMenu, title="Genres"), title = "Genres", thumb = R(ICON_LIST)))
+	oc.add(DirectoryObject(key = Callback(Bookmarks, title="My Bookmarks"), title = "My Bookmarks", thumb = R(ICON_QUEUE)))
 	oc.add(InputDirectoryObject(key=Callback(Search), title = "Search", prompt = "Search for what?", thumb = R(ICON_SEARCH)))
 	
 	return oc
@@ -61,14 +62,12 @@ def ShowCategory(title, category, page_count):
 		url = BASE_URL + category + "/" + each.xpath("./div/a/@href")[0]
 		title = each.xpath("./div/a/img/@alt")[0]
 		thumb = each.xpath("./div/a/img/@src")[0]
-		summary = each.xpath("./div/a/pre/text()")[0].split("\r\n\r\n")[-2].replace("\n", " ")
 		
 		if category == "/movies" or category == "/episodes":
 			oc.add(DirectoryObject(
 				key = Callback(EpisodeDetail, title = title, url = url),
 				title = title,
-				thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'),
-				summary = summary
+				thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
 				)
 			)
 
@@ -76,8 +75,7 @@ def ShowCategory(title, category, page_count):
 			oc.add(DirectoryObject(
 				key = Callback(PageEpisodes, title = title, url = url),
 				title = title,
-				thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'),
-				summary = summary
+				thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
 				)
 			)
 	
@@ -108,8 +106,7 @@ def PageEpisodes(title, url):
 			oc.add(DirectoryObject(
 				key = Callback(PageEpisodes, title = season_title, url = season_url),
 				title = season_title,
-				thumb = R(ICON_SERIES),
-				summary = "Watch " + season_title + " of " + title + " in HD now from G2G.fm!"
+				thumb = R(ICON_SERIES)
 				)
 			)
 
@@ -121,8 +118,7 @@ def PageEpisodes(title, url):
 			oc.add(DirectoryObject(
 				key = Callback(EpisodeDetail, title = ep_title.rsplit(" Streaming",1)[0].rsplit(" Download",1)[0], url = ep_url),
 				title = ep_title.rsplit(" Streaming",1)[0].rsplit(" Download",1)[0],
-				thumb = R(ICON_LIST),
-				summary = "Watch " + ep_title.rsplit(" Streaming",1)[0].rsplit(" Download",1)[0] + " now in HD from G2G.fm!"
+				thumb = R(ICON_LIST)
 				)
 			)
 
@@ -149,8 +145,7 @@ def EpisodeDetail(title, url):
 	oc.add(VideoClipObject(
 		url = final_frame_url,
 		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'),
-		title = title,
-		summary = "Watch " + title + " now in HD from G2G.fm!"
+		title = title
 		)
 	)
 
@@ -159,8 +154,7 @@ def EpisodeDetail(title, url):
 		oc.add(VideoClipObject(
 			url = trailer_url,
 			thumb = R(ICON_SERIES),
-			title = "Watch Trailer",
-			summary = "Watch the trailer for " + title + " now on YouTube."
+			title = "Watch Trailer"
 			)
 		)
 	
@@ -168,7 +162,6 @@ def EpisodeDetail(title, url):
 	oc.add(DirectoryObject(
 		key = Callback(AddBookmark, title = title, url = url),
 		title = "Bookmark Video",
-		summary = "You can add " + title + " to your Bookmarks list, to make it easier to find later.",
 		thumb = R(ICON_QUEUE)
 		)
 	)	
@@ -192,8 +185,7 @@ def Bookmarks(title):
 		oc.add(DirectoryObject(
 			key = Callback(EpisodeDetail, title = title, url = url),
 			title = title,
-			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'),
-			summary = "Watch " + title + " now in HD from G2G.fm!"
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
 			)
 		)
 	
@@ -228,7 +220,7 @@ def ClearBookmarks():
 	return ObjectContainer(header="My Bookmarks", message='Your bookmark list will be cleared soon.')
 	
 ######################################################################################
-# Takes query and sets up a http request to return and create objects from results
+# Searches both movies and tvseries for query and returns concatenated results
 
 @route(PREFIX + "/search")	
 def Search(query):
@@ -261,5 +253,64 @@ def Search(query):
 	if len(oc) < 1:
 		Log ("No shows found! Check search query.")
 		return ObjectContainer(header="Error", message="Nothing found! Try something less specific.") 
+	
+	return oc
+	
+######################################################################################
+# Displays movie genre categories
+	
+@route(PREFIX + "/genremenu")
+def GenreMenu(title):
+
+	oc = ObjectContainer(title1 = title)
+	page_data = HTML.ElementFromURL("http://g2g.fm/movies/genre.php?showC=27")
+
+	for each in page_data.xpath("//td[@class='topic_content']"):
+		url = BASE_URL + "/movies/" + "/" + each.xpath("./div/a/@href")[0]
+		thumb = each.xpath("./div/a/img/@src")[0]
+		title = thumb.rsplit("/",1)[1].rsplit("-",1)[0]
+		
+		oc.add(DirectoryObject(
+			key = Callback(GenrePage, title = title, url = url, page_count = 1),
+			title = title,
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
+			)
+		)
+		
+	return oc
+
+######################################################################################
+# Performs the same role as ShowCategory, but with adjustments for genre menu quirks
+	
+@route(PREFIX + "/genrepage")
+def GenrePage(title, url, page_count):
+	
+	oc = ObjectContainer(title1 = title)
+	page_data = HTML.ElementFromURL(url)
+
+	for each in page_data.xpath("//td[@class='topic_content']"):
+		url = BASE_URL + "/movies/" + each.xpath("./div/a/@href")[0]
+		title = each.xpath("./div/a/img/@alt")[0]
+		thumb = each.xpath("./div/a/img/@src")[0]
+		
+		oc.add(DirectoryObject(
+			key = Callback(EpisodeDetail, title = title, url = url),
+			title = title,
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
+			)
+		)
+		
+	try:
+		next_page = BASE_URL + page_data.xpath("//div[@class = 'mainpagination']//a/@href")[0].rsplit("=",1)[0] + "=" + str(int(page_count) + 1)
+	except:
+		next_page = "null"
+	
+	if next_page != "null":
+		oc.add(NextPageObject(
+			key = Callback(GenrePage, title = title, url = next_page, page_count = int(page_count) + 1),
+			title = "More...",
+			thumb = R(ICON_NEXT)
+				)
+			)
 	
 	return oc
