@@ -8,7 +8,7 @@ This is a plugin that creates a new channel in Plex Media Server to view content
 System Requirements
 ===================
 
-- **Plex Media Server Version 0.9.8.4 or newer:**
+- **Plex Media Server Version 0.9.9.10 or newer:**
 	
 	- Tested Working:
 		- Windows
@@ -25,6 +25,7 @@ System Requirements
 		- Plex/Web
 		- Roku
 		- iOS
+		- PlexConnect
 		- LG Smart TV
 		
 	- Tested Not Working:
@@ -55,12 +56,15 @@ How To Install
 Known Issues
 ============
 
-- No metadata info on final video page.
+- No item summaries.
+- No metadata info on final video page due to Google Video link.
 - Source website has missing videos for some older content.
 
 
 Changelog
 =========
+
+**0.03** - 14/06/14 - Added genres menu. Removed item summaries due to bugs.
 
 **0.02** - 11/06/14 - Added trailers, search and bookmarks. Removed URL service.
 
