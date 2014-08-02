@@ -148,7 +148,34 @@ def EpisodeDetail(title, url):
 		title = title
 		)
 	)
+	try:
+		second_frame_url_part2 = second_frame_url.split(".php")[0]+"2.php"
+		second_frame_data_part2 = HTML.ElementFromString(HTTP.Request(second_frame_url_part2, headers={'referer':first_frame_url}))
+		final_frame_url_part2 = second_frame_data_part2.xpath("//iframe/@src")[0]
+		Log ("Part2:"+final_frame_url_part2)
+		oc.add(VideoClipObject(
+			url = final_frame_url_part2,
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'),
+			title = "2-"+title
+			)
+		)
+	except:
+		Log ("Part2 Exception")
 
+	try:
+		second_frame_url_part3 = second_frame_url.split(".php")[0]+"3.php"
+		second_frame_data_part3 = HTML.ElementFromString(HTTP.Request(second_frame_url_part3, headers={'referer':first_frame_url}))
+		final_frame_url_part3 = second_frame_data_part3.xpath("//iframe/@src")[0]
+		Log ("Part3:"+final_frame_url_part3)
+		oc.add(VideoClipObject(
+			url = final_frame_url_part3,
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'),
+			title = "3-"+title
+			)
+		)
+	except:
+		Log ("Part3 Exception")
+		
 	if len(page_data.xpath("//iframe[@class='restrain']/@src")) > 0:	
 		trailer_url = page_data.xpath("//iframe[@class='restrain']/@src")[0].split("?",1)[0].replace("//www.youtube.com/embed/", "http://www.youtube.com/watch?v=")
 		oc.add(VideoClipObject(
