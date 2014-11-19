@@ -1,6 +1,6 @@
 ######################################################################################
 #
-#	G2G.fm (BY TEHCRUCIBLE) - v0.03
+#	G2G.fm (BY TEHCRUCIBLE) - v0.04
 #
 ######################################################################################
 
@@ -44,8 +44,6 @@ def MainMenu():
 	oc.add(DirectoryObject(key = Callback(ShowCategory, title="TV Series", category = "/tvseries", page_count = 1), title = "TV Series", thumb = R(ICON_SERIES)))
 	oc.add(DirectoryObject(key = Callback(ShowCategory, title="Latest Episodes", category = "/episodes", page_count = 1), title = "Latest Episodes", thumb = R(ICON_SERIES)))
 	oc.add(DirectoryObject(key = Callback(GenreMenu, title="Genres"), title = "Genres", thumb = R(ICON_LIST)))
-	oc.add(DirectoryObject(key = Callback(Bookmarks, title="My Bookmarks"), title = "My Bookmarks", thumb = R(ICON_QUEUE)))
-	oc.add(InputDirectoryObject(key=Callback(Search), title = "Search", prompt = "Search for what?", thumb = R(ICON_SEARCH)))
 	
 	return oc
 
@@ -183,106 +181,10 @@ def EpisodeDetail(title, url):
 			thumb = R(ICON_SERIES),
 			title = "Watch Trailer"
 			)
-		)
-	
-	#provide a way to add to favourites list
-	oc.add(DirectoryObject(
-		key = Callback(AddBookmark, title = title, url = url),
-		title = "Bookmark Video",
-		thumb = R(ICON_QUEUE)
-		)
-	)	
+		)	
 	
 	return oc
-	
-######################################################################################
-# Loads bookmarked shows from Dict.  Titles are used as keys to store the show urls.
 
-@route(PREFIX + "/bookmarks")	
-def Bookmarks(title):
-
-	oc = ObjectContainer(title1 = title)
-	
-	for each in Dict:
-		url = Dict[each]
-		page_data = HTML.ElementFromURL(url)
-		title = each
-		thumb = page_data.xpath("//blockquote[@class='postcontent restore']/div/img/@src")[0]
-		
-		oc.add(DirectoryObject(
-			key = Callback(EpisodeDetail, title = title, url = url),
-			title = title,
-			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
-			)
-		)
-	
-	#add a way to clear bookmarks list
-	oc.add(DirectoryObject(
-		key = Callback(ClearBookmarks),
-		title = "Clear Bookmarks",
-		thumb = R(ICON_QUEUE),
-		summary = "CAUTION! This will clear your entire bookmark list!"
-		)
-	)
-	
-	return oc
-	
-######################################################################################
-# Adds a show to the bookmarks list using the title as a key for the url
-	
-@route(PREFIX + "/addbookmark")
-def AddBookmark(title, url):
-	
-	Dict[title] = url
-	Dict.Save()
-	return ObjectContainer(header=title, message='This show has been added to your bookmarks.')
-	
-######################################################################################
-# Clears the Dict that stores the bookmarks list
-	
-@route(PREFIX + "/clearbookmarks")
-def ClearBookmarks():
-
-	Dict.Reset()
-	return ObjectContainer(header="My Bookmarks", message='Your bookmark list will be cleared soon.')
-	
-######################################################################################
-# Searches both movies and tvseries for query and returns concatenated results
-
-@route(PREFIX + "/search")	
-def Search(query):
-		
-	oc = ObjectContainer(title1 = query)
-	
-	for each in HTML.ElementFromURL("http://g2g.fm/tvseries/search.php?q=" + query).xpath("//blockquote/ol/span/b/a"):
-		if len(each.xpath("./text()")[0].strip()) > 0:
-			title = each.xpath("./text()")[0]
-			url = BASE_URL + "/tvseries/" + each.xpath("./@href")[0]
-		
-			oc.add(DirectoryObject(
-				key = Callback(PageEpisodes, title = title, url = url),
-				title = title
-				)
-			)
-	
-	for each in HTML.ElementFromURL("http://g2g.fm/movies/search.php?q=" + query).xpath("//blockquote/ol/span/b/a"):
-		if len(each.xpath("./text()")[0].strip()) > 0:
-			title = each.xpath("./text()")[0]
-			url = BASE_URL + "/movies/" + each.xpath("./@href")[0]
-		
-			oc.add(DirectoryObject(
-				key = Callback(EpisodeDetail, title = title, url = url),
-				title = title
-				)
-			)
-	
-	#check for zero results and display error
-	if len(oc) < 1:
-		Log ("No shows found! Check search query.")
-		return ObjectContainer(header="Error", message="Nothing found! Try something less specific.") 
-	
-	return oc
-	
 ######################################################################################
 # Displays movie genre categories
 	

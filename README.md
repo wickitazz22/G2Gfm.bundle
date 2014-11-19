@@ -8,36 +8,31 @@ This is a plugin that creates a new channel in Plex Media Server to view content
 System Requirements
 ===================
 
-- **Plex Media Server Version 0.9.9.10 or newer:**
+- **Plex Media Server:**
 	
 	- Tested Working:
 		- Windows
 		- Mac OSX
 		- Linux
-		
-	- Not Working:
-		- ARM based NAS (Transcoding may be required)
 
 - **Plex Clients:**
 
 	- Tested Working:
-		- Plex Media Centre / Home Theater
+		- Plex Home Theater
 		- Plex/Web
+		- Android
+		- Chromecast
+        - Ouya
 		- Roku
 		- iOS
 		- PlexConnect
-		- LG Smart TV
-		
-	- Tested Not Working:
-		- Android
-		- Chromecast
+		- Smart TV
 		
 	- Not Tested:
 		- Windows 8
-		- PS3/360
+		- Xbox
 		- Windows Phone
-		- Samsung Google Smart TV
-		- Ouya
+
 
 How To Install
 ==============
@@ -63,6 +58,8 @@ Known Issues
 
 Changelog
 =========
+
+**0.04** - 19/11/14 - Removed search and bookmarks.
 
 **0.03** - 14/06/14 - Added genres menu. Removed item summaries due to bugs.
 
