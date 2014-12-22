@@ -134,7 +134,7 @@ def EpisodeDetail(title, url):
 	thumb = page_data.xpath("//blockquote[@class='postcontent restore']//div/img/@src")[0]
 
 	#load recursive iframes to find google docs url
-	first_frame_url = page_data.xpath("//blockquote/div/iframe/@src")[0]
+	first_frame_url = page_data.xpath("//blockquote/div/iframe/@src")[1]
 	first_frame_data = HTML.ElementFromString(HTTP.Request(first_frame_url, headers={'referer':url}))
 	second_frame_url = first_frame_data.xpath("//iframe/@src")[0]
 	second_frame_data = HTML.ElementFromString(HTTP.Request(second_frame_url, headers={'referer':first_frame_url}))
