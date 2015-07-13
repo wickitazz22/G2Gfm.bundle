@@ -59,6 +59,8 @@ Known Issues
 Changelog
 =========
 
+**0.05** - 14/07/15 - Updated url to moviez.se.
+
 **0.04** - 19/11/14 - Removed search and bookmarks.
 
 **0.03** - 14/06/14 - Added genres menu. Removed item summaries due to bugs.
