@@ -131,7 +131,10 @@ def EpisodeDetail(title, url):
 	oc = ObjectContainer(title1 = title)
 	page_data = HTML.ElementFromURL(url)
 	title = page_data.xpath("//title/text()")[0].rsplit(" Streaming",1)[0].rsplit(" Download",1)[0]
-	thumb = page_data.xpath("//blockquote[@class='postcontent restore']//div/img/@src")[0]
+	try:
+		thumb = page_data.xpath("//blockquote[@class='postcontent restore']//div/img/@src")[0]
+	except:
+		thumb = page_data.xpath("//div[@id='fullimage']//a/img/@src")[0]
 
 	#load recursive iframes to find google docs url
 	try:
