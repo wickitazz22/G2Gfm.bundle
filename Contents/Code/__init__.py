@@ -15,7 +15,7 @@ ICON_NEXT = "icon-next.png"
 ICON_MOVIES = "icon-movies.png"
 ICON_SERIES = "icon-series.png"
 ICON_QUEUE = "icon-queue.png"
-BASE_URL = "http://atoz.se//"
+BASE_URL = "http://atoz.se/"
 
 ######################################################################################
 # Set global variables
