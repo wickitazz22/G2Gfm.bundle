@@ -1,6 +1,6 @@
 ######################################################################################
 #
-#	G2G.fm (BY TEHCRUCIBLE) - v0.05
+#	G2G.fm (BY TEHCRUCIBLE) - v0.06
 #
 ######################################################################################
 
@@ -15,7 +15,7 @@ ICON_NEXT = "icon-next.png"
 ICON_MOVIES = "icon-movies.png"
 ICON_SERIES = "icon-series.png"
 ICON_QUEUE = "icon-queue.png"
-BASE_URL = "http://moviez.se/"
+BASE_URL = "http://atoz.se/"
 
 ######################################################################################
 # Set global variables
@@ -31,7 +31,7 @@ def Start():
 	
 	HTTP.CacheTime = CACHE_1HOUR
 	HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36'
-	HTTP.Headers['Referer'] = 'http://moviez.se/'
+	HTTP.Headers['Referer'] = 'http://atoz.se/'
 	
 ######################################################################################
 # Menu hierarchy
@@ -198,7 +198,7 @@ def EpisodeDetail(title, url):
 def GenreMenu(title):
 
 	oc = ObjectContainer(title1 = title)
-	page_data = HTML.ElementFromURL("http://moviez.se/movies/genre.php?showC=27")
+	page_data = HTML.ElementFromURL("http://atoz.se/movies/genre.php?showC=27")
 
 	for each in page_data.xpath("//td[@class='topic_content']"):
 		url = BASE_URL + "/movies/" + "/" + each.xpath("./div/a/@href")[0]
