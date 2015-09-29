@@ -180,8 +180,9 @@ def EpisodeDetail(title, url):
     except:
         Log ("Part3 Exception")
 
-    if len(page_data.xpath("//iframe[@class='restrain']/@src")) > 0:
-        trailer_url = page_data.xpath("//iframe[@class='restrain']/@src")[0].split("?",1)[0].replace("//www.youtube.com/embed/", "http://www.youtube.com/watch?v=")
+    if len(page_data.xpath("//iframe[contains(@src,'ytid=')]/@src")) > 0:
+        trailer_url = page_data.xpath("//iframe[contains(@src,'ytid=')]/@src")[0].split("?",1)[0].replace("http://dayt.se/pastube.php", "https://www.youtube.com/watch?v=") + page_data.xpath("//iframe[contains(@src,'ytid=')]/@src")[0].split("=",1)[1]
+	Log(trailer_url)
         oc.add(VideoClipObject(
             url = trailer_url,
             thumb = R(ICON_SERIES),
