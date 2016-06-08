@@ -1,0 +1,9 @@
+[
+  {
+    "id": "site_url",
+    "type": "enum",
+    "label": "Site URL",
+    "values": ["http://dayt.se", "http://g2gfm.eu"],
+    "default": "http://dayt.se"
+  }
+]

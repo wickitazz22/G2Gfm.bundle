@@ -6,7 +6,6 @@
 
 TITLE = "g2g.fm"
 PREFIX = "/video/g2gfm"
-BASE_URL = "http://dayt.se"
 
 ART = "art-default.jpg"
 ICON = "icon-default.png"
@@ -34,7 +33,8 @@ def Start():
 
     HTTP.CacheTime = CACHE_1HOUR
     HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.63 Safari/537.36'
-    HTTP.Headers['Referer'] = 'http://dayt.se/'
+
+    ValidatePrefs()
 
 ######################################################################################
 @handler(PREFIX, TITLE, art=ART, thumb=ICON)
@@ -53,45 +53,75 @@ def MainMenu():
         ))
     """
     oc.add(DirectoryObject(
-        key=Callback(ShowCategory, title="Latest Videos", category="/movies", href='/index.php?show=latest-topics'),
+        key=Callback(ShowCategory, title="Latest Videos", category="/latest", href='/index.php?show=latest-topics'),
         title="Latest Videos", thumb=R(ICON_MOVIES)
         ))
     oc.add(DirectoryObject(
         key=Callback(GenreMenu, title="Genres"),
         title="Genres", thumb=R(ICON_LIST)
         ))
+    oc.add(PrefsObject(title='Preferences'))
 
     return oc
+
+######################################################################################
+@route(PREFIX + '/validateprefs')
+def ValidatePrefs():
+
+    if (Prefs['site_url'] != Dict['site_url']):
+        Dict['site_url'] = Prefs['site_url']
+        Dict.Save()
+
+    Log.Debug('*' * 80)
+    try:
+        test = HTTP.Request(Dict['site_url'], cacheTime=0).headers
+        Log.Debug('* \"%s\" headers = %s' %(Dict['site_url'], test))
+        Dict['domain_test'] = 'Pass'
+    except:
+        Log.Debug('* \"%s\" is not a valid domain for this channel.' %Dict['site_url'])
+        Log.Debug('* Please pick a different URL')
+        Dict['domain_test'] = 'Fail'
+    Log.Debug('*' * 80)
+
+    Dict.Save()
+
+######################################################################################
+def DomainTest():
+    """Setup MessageContainer if Dict[\'domain_test\'] failed"""
+
+    if Dict['domain_test'] == 'Fail':
+        message = '%s is NOT a Valid Site URL for this channel.  Please pick a different Site URL.'
+        return MessageContainer('Error', message %Dict['site_url'])
+    else:
+        return False
 
 ######################################################################################
 @route(PREFIX + "/show/category")
 def ShowCategory(title, category, href):
     """Creates page url from category and creates objects from that page"""
 
+    if DomainTest() != False:
+        return DomainTest()
+
     oc = ObjectContainer(title1=title)
 
-    if href.startswith('http'):
-        url = href
-    elif href.startswith('//'):
-        url = 'http:' + href
-    else:
-        url = BASE_URL + (href if href.startswith('/') else '/' + href)
-
-    html = HTML.ElementFromURL(url)
+    html = html_from_url(clean_url(href))
 
     for m in media_list(html, category):
-        if category == "/movies" or category == "/episodes":
-            oc.add(DirectoryObject(
-                key=Callback(EpisodeDetail, title=m['title'], url=m['url'], eid=m['id']),
-                title=m['title'],
-                thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
-                ))
+        oc.add(DirectoryObject(
+            key=Callback(EpisodeDetail, title=m['title'], url=m['url'], eid=m['id']),
+            title=m['title'],
+            thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+            ))
+        """
+        if category == "/movies" or category == "/episodes" or category == '/latest':
         else:
             oc.add(DirectoryObject(
                 key=Callback(PageEpisodes, title=m['title'], url=m['url']),
                 title=m['title'],
                 thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
                 ))
+        """
 
     nhref = next_page(html)
     if nhref:
@@ -146,10 +176,13 @@ def EpisodeDetail(title, url, eid):
     Checks for trailer availablity.
     """
 
+    if DomainTest() != False:
+        return DomainTest()
+
     oc = ObjectContainer(title1=title)
 
     try:
-        html = HTML.ElementFromURL(url)
+        html = html_from_url(clean_url(url))
     except Exception as e:
         Log.Critical('* EpisodeDetail Error: %s' %str(e))
         message = 'This media has expired.' if ('HTTP Error' in str(e) and '404' in str(e)) else str(e)
@@ -157,32 +190,32 @@ def EpisodeDetail(title, url, eid):
 
     ptitle = html.xpath("//title/text()")[0].rsplit(" Streaming",1)[0].rsplit(" Download",1)[0]
     thumb = html.xpath('//img[@id="nameimage"]/@src')
-    if thumb:
-        thumb = thumb[0] if thumb[0].startswith('http') else BASE_URL + thumb[0]
-    else:
-        thumb = None
-    Log.Debug('* thumb = %s' %thumb)
+    thumb = (thumb[0] if thumb[0].startswith('http') else clean_url(thumb[0])) if thumb else None
 
     wpm = html.xpath('//iframe[@id="wpm"]/@src')
     if not wpm:
         return MessageContainer('Warning', 'No Video Source Found.')
 
-    page_text = HTTP.Request(BASE_URL + wpm[0]).content
-    r = Regex(r'[\'\"]\#part(\d+)[\'\"][^\#]+src\=[\"\']([^\;\'\"]+)').findall(page_text)
+    page_text = HTTP.Request(clean_url(wpm[0])).content
+    r = Regex(r'[\'\"]\#part(\d+)[\'\"][^\#]+?src\=[\"\']([^\;\'\"]+)').findall(page_text)
+    if not r:
+        r0 = Regex(r'iframe\s+(?:id\=[\'\"]\w+[\'\"]\s+)?src\=[\"\']([^\;\'\"]+)').search(page_text)
+        if r0:
+            r = [(u'0', r0.group(1))]
     if r:
         for p, h in sorted(r):
-            gphtml = HTML.ElementFromURL(BASE_URL + h)
+            gphtml = html_from_url(clean_url(h))
             gp_iframe = gphtml.xpath('//iframe/@src')
             if gp_iframe:
                 oc.add(VideoClipObject(
-                    title='%s-%s' %(p, ptitle),
+                    title='%s-%s' %(p, ptitle) if int(p) != 0 else ptitle,
                     thumb=Resource.ContentsOfURLWithFallback(thumb, 'icon-cover.png'),
                     url=gp_iframe[0]
                     ))
 
     trailpm = html.xpath('//iframe[@id="trailpm"]/@src')
     if trailpm:
-        thtml = HTML.ElementFromURL(BASE_URL + trailpm[0])
+        thtml = html_from_url(clean_url(trailpm[0]))
         yttrailer = thtml.xpath('//iframe[@id="yttrailer"]/@src')
         if yttrailer:
             yttrailer_url = yttrailer[0] if yttrailer[0].startswith('http') else 'https:' + yttrailer[0]
@@ -198,9 +231,12 @@ def EpisodeDetail(title, url, eid):
 def GenreMenu(title):
     """Displays movie genre categories"""
 
-    oc = ObjectContainer(title1=title)
-    html = HTML.ElementFromURL(BASE_URL + "/movies/genre.php?showC=27")
+    if DomainTest() != False:
+        return DomainTest()
 
+    oc = ObjectContainer(title1=title)
+
+    html = html_from_url(clean_url('/movies/genre.php?showC=27'))
     for m in media_list(html, '/movies', genre=True):
         oc.add(DirectoryObject(
             key=Callback(ShowCategory, title=m['title'], category='/movies', href=m['url']),
@@ -217,15 +253,15 @@ def media_list(html, category, genre=False):
     info_list = []
     for each in html.xpath("//td[@class='topic_content']"):
         eid = int(Regex(r'goto\-(\d+)').search(each.xpath("./div/a/@href")[0]).group(1))
-        url = BASE_URL + category + "/view.php?id=%i" %eid
+        if 'movie' in category:
+            url = clean_url("%s/view.php?id=%i" %(category, eid))
+        else:
+            url = clean_url("/view.php?id=%i" %eid)
 
         thumb = each.xpath("./div/a/img/@src")[0]
-        thumb = thumb if 'http' in thumb else BASE_URL + thumb
+        thumb = thumb if thumb.startswith('http') else clean_url(thumb)
 
-        if genre:
-            title = thumb.rsplit("/",1)[1].rsplit("-",1)[0]
-        else:
-            title = each.xpath("./div/a/img/@alt")[0]
+        title = thumb.rsplit("/",1)[1].rsplit("-",1)[0] if genre else each.xpath("./div/a/img/@alt")[0]
 
         info_list.append({'title': title, 'thumb': thumb, 'url': url, 'id': eid})
 
@@ -239,4 +275,28 @@ def next_page(html):
     next_page_node = html.xpath('//a[contains(@href, "&page=")][text()=">"]/@href')
     if next_page_node:
         nhref = next_page_node[0]
+
     return nhref
+
+######################################################################################
+def html_from_url(url):
+    """pull down fresh content when site URL changes"""
+
+    if Dict['site_url'] != Dict['site_url_old']:
+        Dict['site_url_old'] = Dict['site_url']
+        Dict.Save()
+        HTTP.ClearCache()
+        HTTP.Headers['Referer'] = Dict['site_url']
+
+    return HTML.ElementFromURL(url)
+
+######################################################################################
+def clean_url(href):
+    """handle href/URL variations and set corrent Site URL"""
+
+    if href.startswith('http') or href.startswith('//'):
+        url = Dict['site_url'] + '/' + href.split('/', 3)[-1]
+    else:
+        url = Dict['site_url'] + (href if href.startswith('/') else '/' + href)
+
+    return url
