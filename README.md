@@ -9,7 +9,7 @@ System Requirements
 ===================
 
 - **Plex Media Server:**
-	
+
 	- Tested Working:
 		- Windows
 		- Mac OSX
@@ -27,7 +27,7 @@ System Requirements
 		- iOS
 		- PlexConnect
 		- Smart TV
-		
+
 	- Not Tested:
 		- Windows 8
 		- Xbox
@@ -58,6 +58,12 @@ Known Issues
 
 Changelog
 =========
+
+**0.08** - 06/07/16 - Fixed code for site changes.
+
+**0.07** - 08/29/15 - Updated url to dayt.se.
+
+**0.06** - 08/23/15 - Updated url to atoz.se.
 
 **0.05** - 14/07/15 - Updated url to moviez.se.
 

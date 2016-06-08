@@ -1,11 +1,13 @@
 ######################################################################################
-#
-#	G2G.fm (BY TEHCRUCIBLE) - v0.07
-#
+#                                                                                    #
+#                           G2G.fm (BY TEHCRUCIBLE) - v0.08                          #
+#                                                                                    #
 ######################################################################################
 
 TITLE = "g2g.fm"
 PREFIX = "/video/g2gfm"
+BASE_URL = "http://dayt.se"
+
 ART = "art-default.jpg"
 ICON = "icon-default.png"
 ICON_LIST = "icon-list.png"
@@ -15,17 +17,18 @@ ICON_NEXT = "icon-next.png"
 ICON_MOVIES = "icon-movies.png"
 ICON_SERIES = "icon-series.png"
 ICON_QUEUE = "icon-queue.png"
-BASE_URL = "http://dayt.se/"
+
 
 ######################################################################################
-# Set global variables
-
 def Start():
+    """Set global variables"""
 
     ObjectContainer.title1 = TITLE
     ObjectContainer.art = R(ART)
+
     DirectoryObject.thumb = R(ICON_COVER)
     DirectoryObject.art = R(ART)
+
     VideoClipObject.thumb = R(ICON_COVER)
     VideoClipObject.art = R(ART)
 
@@ -34,63 +37,76 @@ def Start():
     HTTP.Headers['Referer'] = 'http://dayt.se/'
 
 ######################################################################################
-# Menu hierarchy
-
 @handler(PREFIX, TITLE, art=ART, thumb=ICON)
 def MainMenu():
+    """Menu hierarchy"""
 
     oc = ObjectContainer()
-    oc.add(DirectoryObject(key = Callback(ShowCategory, title="Movies", category = "/movies", page_count = 1), title = "Movies", thumb = R(ICON_MOVIES)))
-    oc.add(DirectoryObject(key = Callback(ShowCategory, title="TV Series", category = "/tvseries", page_count = 1), title = "TV Series", thumb = R(ICON_SERIES)))
-    oc.add(DirectoryObject(key = Callback(ShowCategory, title="Latest Episodes", category = "/episodes", page_count = 1), title = "Latest Episodes", thumb = R(ICON_SERIES)))
-    oc.add(DirectoryObject(key = Callback(GenreMenu, title="Genres"), title = "Genres", thumb = R(ICON_LIST)))
+    oc.add(DirectoryObject(
+        key=Callback(ShowCategory, title="Movies", category="/movies", href='/movies/index.php?&page=1'),
+        title="Movies", thumb=R(ICON_MOVIES)
+        ))
+    """
+    oc.add(DirectoryObject(
+        key=Callback(ShowCategory, title="TV Series", category="/tvseries", href='/tvseries/index.php?&page=1'),
+        title="TV Series", thumb=R(ICON_SERIES)
+        ))
+    oc.add(DirectoryObject(
+        key=Callback(ShowCategory, title="Latest Episodes", category="/episodes", href=/episodes/index.php?&page=1),
+        title="Latest Episodes", thumb=R(ICON_SERIES)
+        ))
+    """
+    oc.add(DirectoryObject(
+        key=Callback(GenreMenu, title="Genres"),
+        title="Genres", thumb=R(ICON_LIST)
+        ))
 
     return oc
 
 ######################################################################################
-# Creates page url from category and creates objects from that page
+@route(PREFIX + "/show/category")
+def ShowCategory(title, category, href):
+    """Creates page url from category and creates objects from that page"""
 
-@route(PREFIX + "/showcategory")
-def ShowCategory(title, category, page_count):
+    oc = ObjectContainer(title1=title)
 
-    oc = ObjectContainer(title1 = title)
-    page_data = HTML.ElementFromURL(BASE_URL + category + "/index.php?&page=" + str(page_count))
+    if href.startswith('http'):
+        url = href
+    elif href.startswith('//'):
+        url = 'http:' + href
+    else:
+        url = BASE_URL + (href if href.startswith('/') else '/' + href)
 
-    for each in page_data.xpath("//td[@class='topic_content']"):
-        url = BASE_URL + category + "/" + each.xpath("./div/a/@href")[0]
-        title = each.xpath("./div/a/img/@alt")[0]
-        thumb = each.xpath("./div/a/img/@src")[0]
+    html = HTML.ElementFromURL(url)
 
+    for m in media_list(html, category):
         if category == "/movies" or category == "/episodes":
             oc.add(DirectoryObject(
-                key = Callback(EpisodeDetail, title = title, url = url),
-                title = title,
-                thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
-                )
-            )
-
-        if category == "/tvseries":
+                key=Callback(EpisodeDetail, title=m['title'], url=m['url'], eid=m['id']),
+                title=m['title'],
+                thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+                ))
+        else:
             oc.add(DirectoryObject(
-                key = Callback(PageEpisodes, title = title, url = url),
-                title = title,
-                thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
-                )
-            )
+                key=Callback(PageEpisodes, title=m['title'], url=m['url']),
+                title=m['title'],
+                thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+                ))
 
-    oc.add(NextPageObject(
-        key = Callback(ShowCategory, title = title, category = category, page_count = int(page_count) + 1),
-        title = "More...",
-        thumb = R(ICON_NEXT)
-            )
-        )
+    nhref = next_page(html)
+    if nhref:
+        oc.add(NextPageObject(
+            key=Callback(ShowCategory, title=title, category=category, href=nhref),
+            title="More...",
+            thumb=R(ICON_NEXT)
+            ))
 
     return oc
-
+"""
 ######################################################################################
-# Checks whether page is episode page or not. If not, display episode list
-
-@route(PREFIX + "/pageepisodes")
+@route(PREFIX + "/episode/page")
 def PageEpisodes(title, url):
+    \"\"\"Checks whether page is episode page or not. If not, display episode list\"\"\"
 
     oc = ObjectContainer(title1 = title)
     page_data = HTML.ElementFromURL(url)
@@ -121,132 +137,106 @@ def PageEpisodes(title, url):
             )
 
     return oc
+"""
+######################################################################################
+@route(PREFIX + "/episode/detail", eid=int)
+def EpisodeDetail(title, url, eid):
+    """
+    Gets metadata and google docs link from episode page.
+    Checks for trailer availablity.
+    """
+
+    oc = ObjectContainer(title1=title)
+
+    try:
+        html = HTML.ElementFromURL(url)
+    except Exception as e:
+        Log.Critical('* EpisodeDetail Error: %s' %str(e))
+        message = 'This media has expired.' if ('HTTP Error' in str(e) and '404' in str(e)) else str(e)
+        return MessageContainer('Warning', message)
+
+    ptitle = html.xpath("//title/text()")[0].rsplit(" Streaming",1)[0].rsplit(" Download",1)[0]
+    thumb = html.xpath('//img[@id="nameimage"]/@src')
+    if thumb:
+        thumb = thumb[0] if thumb[0].startswith('http') else BASE_URL + thumb[0]
+    else:
+        thumb = None
+    Log.Debug('* thumb = %s' %thumb)
+
+    wpm = html.xpath('//iframe[@id="wpm"]/@src')
+    if not wpm:
+        return MessageContainer('Warning', 'No Video Source Found.')
+
+    page_text = HTTP.Request(BASE_URL + wpm[0]).content
+    r = Regex(r'[\'\"]\#part(\d+)[\'\"][^\#]+src\=[\"\']([^\;\'\"]+)').findall(page_text)
+    if r:
+        for p, h in sorted(r):
+            gphtml = HTML.ElementFromURL(BASE_URL + h)
+            gp_iframe = gphtml.xpath('//iframe/@src')
+            if gp_iframe:
+                oc.add(VideoClipObject(
+                    title='%s-%s' %(p, ptitle),
+                    thumb=Resource.ContentsOfURLWithFallback(thumb, 'icon-cover.png'),
+                    url=gp_iframe[0]
+                    ))
+
+    trailpm = html.xpath('//iframe[@id="trailpm"]/@src')
+    if trailpm:
+        thtml = HTML.ElementFromURL(BASE_URL + trailpm[0])
+        yttrailer = thtml.xpath('//iframe[@id="yttrailer"]/@src')
+        if yttrailer:
+            yttrailer_url = yttrailer[0] if yttrailer[0].startswith('http') else 'https:' + yttrailer[0]
+            oc.add(VideoClipObject(url=yttrailer_url, thumb=R(ICON_SERIES), title="Watch Trailer"))
+
+    if len(oc) == 0:
+        return MessageContainer('Warning', 'No Media Found')
+    else:
+        return oc
 
 ######################################################################################
-# Gets metadata and google docs link from episode page. Checks for trailer availablity.
-
-@route(PREFIX + "/episodedetail")
-def EpisodeDetail(title, url):
-
-    oc = ObjectContainer(title1 = title)
-    page_data = HTML.ElementFromURL(url)
-    title = page_data.xpath("//title/text()")[0].rsplit(" Streaming",1)[0].rsplit(" Download",1)[0]
-    try:
-        thumb = page_data.xpath("//blockquote[@class='postcontent restore']//div/img/@src")[0]
-    except:
-        thumb = page_data.xpath("//div[@id='fullimage']//a/img/@src")[0]
-
-    #load recursive iframes to find google docs url
-    try:
-        first_frame_url = page_data.xpath("//blockquote/div/iframe/@src")[1]
-    except:
-        first_frame_url = page_data.xpath("//blockquote/div/iframe/@src")[0]
-    first_frame_data = HTML.ElementFromString(HTTP.Request(first_frame_url, headers={'referer':url}))
-    second_frame_url = first_frame_data.xpath("//iframe/@src")[0]
-    second_frame_data = HTML.ElementFromString(HTTP.Request(second_frame_url, headers={'referer':first_frame_url}))
-    final_frame_url = second_frame_data.xpath("//iframe/@src")[0]
-
-    oc.add(VideoClipObject(
-        url = final_frame_url,
-        thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'),
-        title = title
-        )
-    )
-    try:
-        second_frame_url_part2 = second_frame_url.split(".php")[0]+"2.php"
-        second_frame_data_part2 = HTML.ElementFromString(HTTP.Request(second_frame_url_part2, headers={'referer':first_frame_url}))
-        final_frame_url_part2 = second_frame_data_part2.xpath("//iframe/@src")[0]
-        Log ("Part2:"+final_frame_url_part2)
-        oc.add(VideoClipObject(
-            url = final_frame_url_part2,
-            thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'),
-            title = "2-"+title
-            )
-        )
-    except:
-        Log ("Part2 Exception")
-
-    try:
-        second_frame_url_part3 = second_frame_url.split(".php")[0]+"3.php"
-        second_frame_data_part3 = HTML.ElementFromString(HTTP.Request(second_frame_url_part3, headers={'referer':first_frame_url}))
-        final_frame_url_part3 = second_frame_data_part3.xpath("//iframe/@src")[0]
-        Log ("Part3:"+final_frame_url_part3)
-        oc.add(VideoClipObject(
-            url = final_frame_url_part3,
-            thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png'),
-            title = "3-"+title
-            )
-        )
-    except:
-        Log ("Part3 Exception")
-
-    if len(page_data.xpath("//iframe[contains(@src,'ytid=')]/@src")) > 0:
-        trailer_url = page_data.xpath("//iframe[contains(@src,'ytid=')]/@src")[0].split("?",1)[0].replace("http://dayt.se/pastube.php", "https://www.youtube.com/watch?v=") + page_data.xpath("//iframe[contains(@src,'ytid=')]/@src")[0].split("=",1)[1]
-	Log(trailer_url)
-        oc.add(VideoClipObject(
-            url = trailer_url,
-            thumb = R(ICON_SERIES),
-            title = "Watch Trailer"
-            )
-        )
-
-    return oc
-
-######################################################################################
-# Displays movie genre categories
-
-@route(PREFIX + "/genremenu")
+@route(PREFIX + "/genre/menu")
 def GenreMenu(title):
+    """Displays movie genre categories"""
 
-    oc = ObjectContainer(title1 = title)
-    page_data = HTML.ElementFromURL("http://dayt.se/movies/genre.php?showC=27")
+    oc = ObjectContainer(title1=title)
+    html = HTML.ElementFromURL(BASE_URL + "/movies/genre.php?showC=27")
 
-    for each in page_data.xpath("//td[@class='topic_content']"):
-        url = BASE_URL + "/movies/" + "/" + each.xpath("./div/a/@href")[0]
-        thumb = each.xpath("./div/a/img/@src")[0]
-        title = thumb.rsplit("/",1)[1].rsplit("-",1)[0]
-
+    for m in media_list(html, '/movies', genre=True):
         oc.add(DirectoryObject(
-            key = Callback(GenrePage, title = title, url = url, page_count = 1),
-            title = title,
-            thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
-            )
-        )
+            key=Callback(ShowCategory, title=m['title'], category='/movies', href=m['url']),
+            title=m['title'],
+            thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+            ))
 
     return oc
 
 ######################################################################################
-# Performs the same role as ShowCategory, but with adjustments for genre menu quirks
+def media_list(html, category, genre=False):
+    """didn't want to write this over-and-over again"""
 
-@route(PREFIX + "/genrepage")
-def GenrePage(title, url, page_count):
+    info_list = []
+    for each in html.xpath("//td[@class='topic_content']"):
+        eid = int(Regex(r'goto\-(\d+)').search(each.xpath("./div/a/@href")[0]).group(1))
+        url = BASE_URL + category + "/view.php?id=%i" %eid
 
-    oc = ObjectContainer(title1 = title)
-    page_data = HTML.ElementFromURL(url)
-
-    for each in page_data.xpath("//td[@class='topic_content']"):
-        url = BASE_URL + "/movies/" + each.xpath("./div/a/@href")[0]
-        title = each.xpath("./div/a/img/@alt")[0]
         thumb = each.xpath("./div/a/img/@src")[0]
+        thumb = thumb if 'http' in thumb else BASE_URL + thumb
 
-        oc.add(DirectoryObject(
-            key = Callback(EpisodeDetail, title = title, url = url),
-            title = title,
-            thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='icon-cover.png')
-            )
-        )
+        if genre:
+            title = thumb.rsplit("/",1)[1].rsplit("-",1)[0]
+        else:
+            title = each.xpath("./div/a/img/@alt")[0]
 
-    try:
-        next_page = BASE_URL + page_data.xpath("//div[@class = 'mainpagination']//a/@href")[0].rsplit("=",1)[0] + "=" + str(int(page_count) + 1)
-    except:
-        next_page = "null"
+        info_list.append({'title': title, 'thumb': thumb, 'url': url, 'id': eid})
 
-    if next_page != "null":
-        oc.add(NextPageObject(
-            key = Callback(GenrePage, title = title, url = next_page, page_count = int(page_count) + 1),
-            title = "More...",
-            thumb = R(ICON_NEXT)
-                )
-            )
+    return info_list
 
-    return oc
+######################################################################################
+def next_page(html):
+    """Seperated out next page code just in case"""
+
+    nhref = False
+    next_page_node = html.xpath('//a[contains(@href, "&page=")][text()=">"]/@href')
+    if next_page_node:
+        nhref = next_page_node[0]
+    return nhref
