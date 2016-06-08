@@ -51,11 +51,11 @@ def MainMenu():
         key=Callback(ShowCategory, title="TV Series", category="/tvseries", href='/tvseries/index.php?&page=1'),
         title="TV Series", thumb=R(ICON_SERIES)
         ))
-    oc.add(DirectoryObject(
-        key=Callback(ShowCategory, title="Latest Episodes", category="/episodes", href=/episodes/index.php?&page=1),
-        title="Latest Episodes", thumb=R(ICON_SERIES)
-        ))
     """
+    oc.add(DirectoryObject(
+        key=Callback(ShowCategory, title="Latest Videos", category="/movies", href='/index.php?show=latest-topics'),
+        title="Latest Videos", thumb=R(ICON_MOVIES)
+        ))
     oc.add(DirectoryObject(
         key=Callback(GenreMenu, title="Genres"),
         title="Genres", thumb=R(ICON_LIST)
