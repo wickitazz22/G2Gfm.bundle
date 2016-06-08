@@ -54,12 +54,14 @@ Known Issues
 - No item summaries.
 - No metadata info on final video page due to Google Video link.
 - Source website has missing videos for some older content.
+- TV Show / Episodes sections removed from site.
+- Search function removed from site.
 
 
 Changelog
 =========
 
-**0.08** - 06/07/16 - Fixed code for site changes.
+**0.08** - 06/08/16 - Fixed code for site changes. Added Site URL preference.
 
 **0.07** - 08/29/15 - Updated url to dayt.se.
 
