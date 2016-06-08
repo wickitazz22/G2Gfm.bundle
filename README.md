@@ -9,7 +9,7 @@ System Requirements
 ===================
 
 - **Plex Media Server:**
-	
+
 	- Tested Working:
 		- Windows
 		- Mac OSX
@@ -27,7 +27,7 @@ System Requirements
 		- iOS
 		- PlexConnect
 		- Smart TV
-		
+
 	- Not Tested:
 		- Windows 8
 		- Xbox
@@ -54,10 +54,18 @@ Known Issues
 - No item summaries.
 - No metadata info on final video page due to Google Video link.
 - Source website has missing videos for some older content.
+- TV Show / Episodes sections removed from site.
+- Search function removed from site.
 
 
 Changelog
 =========
+
+**0.08** - 06/08/16 - Fixed code for site changes. Added Site URL preference.
+
+**0.07** - 08/29/15 - Updated url to dayt.se.
+
+**0.06** - 08/23/15 - Updated url to atoz.se.
 
 **0.05** - 14/07/15 - Updated url to moviez.se.
 
