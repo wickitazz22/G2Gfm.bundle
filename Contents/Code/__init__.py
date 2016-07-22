@@ -1,6 +1,6 @@
 ######################################################################################
 #                                                                                    #
-#                           G2G.fm (BY TEHCRUCIBLE) - v0.09                          #
+#                           G2G.fm (BY TEHCRUCIBLE) - v0.10                          #
 #                                                                                    #
 ######################################################################################
 
@@ -17,7 +17,6 @@ ICON_MOVIES = "icon-movies.png"
 ICON_SERIES = "icon-series.png"
 ICON_QUEUE = "icon-queue.png"
 
-
 ######################################################################################
 def Start():
     """Set global variables"""
@@ -27,6 +26,9 @@ def Start():
 
     DirectoryObject.thumb = R(ICON_COVER)
     DirectoryObject.art = R(ART)
+
+    InputDirectoryObject.thumb = R(ICON_SEARCH)
+    InputDirectoryObject.art = R(ART)
 
     VideoClipObject.thumb = R(ICON_COVER)
     VideoClipObject.art = R(ART)
@@ -63,6 +65,9 @@ def MainMenu():
         title="Movie Genres", thumb=R(ICON_LIST)
         ))
     oc.add(PrefsObject(title='Preferences'))
+    oc.add(InputDirectoryObject(
+        key=Callback(Search), title='Search', prompt='Search G2G for...'
+        ))
 
     return oc
 
@@ -313,13 +318,45 @@ def GenreMenu(title):
     return MessageContainer('Warning', 'No Genre(s) Found')
 
 ######################################################################################
+@route(PREFIX + "/search", page=int)
+def Search(query='', page=1):
+    if DomainTest() != False:
+        return DomainTest()
+
+    query = query.strip()
+    url = clean_url('/search.php?dayq=%s&page=%i' %(String.Quote(query, usePlus=True), page))
+
+    oc = ObjectContainer(title1='Search for \"%s\"' %query)
+
+    html = html_from_url(url)
+    for m in media_list(html, '/search'):
+        oc.add(DirectoryObject(
+            key=Callback(EpisodeDetail, title=m['title'], url=m['url']),
+            title=m['title'],
+            thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+            ))
+
+    nhref = next_page(html)
+    if nhref:
+        oc.add(NextPageObject(
+            key=Callback(Search, query=query, page=page+1),
+            title="More...",
+            thumb=R(ICON_NEXT)
+            ))
+
+    if len(oc) != 0:
+        return oc
+
+    return MessageContainer('Warning', 'Oops! No results were found. Please try a different word.')
+
+######################################################################################
 def media_list(html, category, genre=False):
     """didn't want to write this over-and-over again"""
 
-    info_list = []
+    info_list = list()
     for each in html.xpath("//td[@class='topic_content']"):
         eid = int(Regex(r'goto\-(\d+)').search(each.xpath("./div/a/@href")[0]).group(1))
-        if category == '/latest':
+        if category == '/latest' or category == '/search':
             url = clean_url("/view.php?id=%i" %eid)
         else:
             url = clean_url("%s/view.php?id=%i" %(category, eid))
