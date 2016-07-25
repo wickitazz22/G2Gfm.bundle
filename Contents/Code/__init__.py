@@ -1,6 +1,6 @@
 ######################################################################################
 #                                                                                    #
-#                           G2G.fm (BY TEHCRUCIBLE) - v0.08                          #
+#                           G2G.fm (BY TEHCRUCIBLE) - v0.10                          #
 #                                                                                    #
 ######################################################################################
 
@@ -17,7 +17,6 @@ ICON_MOVIES = "icon-movies.png"
 ICON_SERIES = "icon-series.png"
 ICON_QUEUE = "icon-queue.png"
 
-
 ######################################################################################
 def Start():
     """Set global variables"""
@@ -27,6 +26,9 @@ def Start():
 
     DirectoryObject.thumb = R(ICON_COVER)
     DirectoryObject.art = R(ART)
+
+    InputDirectoryObject.thumb = R(ICON_SEARCH)
+    InputDirectoryObject.art = R(ART)
 
     VideoClipObject.thumb = R(ICON_COVER)
     VideoClipObject.art = R(ART)
@@ -46,21 +48,26 @@ def MainMenu():
         key=Callback(ShowCategory, title="Movies", category="/movies", href='/movies/index.php?&page=1'),
         title="Movies", thumb=R(ICON_MOVIES)
         ))
-    """
     oc.add(DirectoryObject(
         key=Callback(ShowCategory, title="TV Series", category="/tvseries", href='/tvseries/index.php?&page=1'),
         title="TV Series", thumb=R(ICON_SERIES)
         ))
-    """
+    oc.add(DirectoryObject(
+        key=Callback(ShowCategory, title="Latest Episodes", category="/episodes", href='/episodes/index.php?&page=1'),
+        title="Latest Episodes", thumb=R(ICON_SERIES)
+        ))
     oc.add(DirectoryObject(
         key=Callback(ShowCategory, title="Latest Videos", category="/latest", href='/index.php?show=latest-topics'),
         title="Latest Videos", thumb=R(ICON_MOVIES)
         ))
     oc.add(DirectoryObject(
-        key=Callback(GenreMenu, title="Genres"),
-        title="Genres", thumb=R(ICON_LIST)
+        key=Callback(GenreMenu, title="Movie Genres"),
+        title="Movie Genres", thumb=R(ICON_LIST)
         ))
     oc.add(PrefsObject(title='Preferences'))
+    oc.add(InputDirectoryObject(
+        key=Callback(Search), title='Search', prompt='Search G2G for...'
+        ))
 
     return oc
 
@@ -108,20 +115,18 @@ def ShowCategory(title, category, href):
     html = html_from_url(clean_url(href))
 
     for m in media_list(html, category):
-        oc.add(DirectoryObject(
-            key=Callback(EpisodeDetail, title=m['title'], url=m['url'], eid=m['id']),
-            title=m['title'],
-            thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
-            ))
-        """
-        if category == "/movies" or category == "/episodes" or category == '/latest':
-        else:
+        if category != '/tvseries':
             oc.add(DirectoryObject(
-                key=Callback(PageEpisodes, title=m['title'], url=m['url']),
+                key=Callback(EpisodeDetail, title=m['title'], url=m['url']),
                 title=m['title'],
                 thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
                 ))
-        """
+        else:
+            oc.add(DirectoryObject(
+                key=Callback(TVShow, title=m['title'], thumb=m['thumb'], url=m['url']),
+                title=m['title'],
+                thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+                ))
 
     nhref = next_page(html)
     if nhref:
@@ -131,46 +136,93 @@ def ShowCategory(title, category, href):
             thumb=R(ICON_NEXT)
             ))
 
-    return oc
-"""
+    if len(oc) != 0:
+        return oc
+
+    c = 'TV Series' if category == '/tvseries' else category[1:].title()
+    return MessageContainer('Warning', '%s Category Empty' %c)
+
 ######################################################################################
-@route(PREFIX + "/episode/page")
-def PageEpisodes(title, url):
-    \"\"\"Checks whether page is episode page or not. If not, display episode list\"\"\"
+@route(PREFIX + "/show")
+def TVShow(title, thumb, url):
+    """Return episode list if no season info, otherwise return season info"""
 
-    oc = ObjectContainer(title1 = title)
-    page_data = HTML.ElementFromURL(url)
-    eps_list = page_data.xpath("//div[@class='inner']/h3/a")
-    season_list = page_data.xpath("//div[@class='titleline']/h2/a")
-    if len(season_list) >= 1:
-        for each in season_list:
-            season_url = BASE_URL + "/forum/" + each.xpath("./@href")[0]
-            season_title = title + " " + each.xpath("./text()")[0]
+    if DomainTest() != False:
+        return DomainTest()
 
-            oc.add(DirectoryObject(
-                key = Callback(PageEpisodes, title = season_title, url = season_url),
-                title = season_title,
-                thumb = R(ICON_SERIES)
-                )
-            )
+    oc = ObjectContainer(title1=title)
 
-    for each in eps_list:
-        ep_url = BASE_URL + "/forum/" + each.xpath("./@href")[0]
-        ep_title = each.xpath("./text()")[0]
+    html = html_from_url(clean_url(url))
 
-        if ep_title.find("Season Download") < 1:
-            oc.add(DirectoryObject(
-                key = Callback(EpisodeDetail, title = ep_title.rsplit(" Streaming",1)[0].rsplit(" Download",1)[0], url = ep_url),
-                title = ep_title.rsplit(" Streaming",1)[0].rsplit(" Download",1)[0],
-                thumb = R(ICON_LIST)
-                )
-            )
+    info_node = html.xpath('//div[@id="nameinfo"]')
+    if info_node:
+        new_thumb = html.xpath('//img[@id="nameimage"]/@src')
+        thumb = clean_url(new_thumb[0]) if new_thumb else thumb
 
-    return oc
-"""
+        text_block = info_node[0].text_content()
+        r = Regex(r'(?i)(season\s(\d+))').findall(text_block)
+        if r:
+            for season, i in r:
+                oc.add(DirectoryObject(
+                    key=Callback(SeasonDetail, title=season.title(), season=int(i), thumb=thumb, url=url),
+                    title=season.title(),
+                    thumb=Resource.ContentsOfURLWithFallback(thumb, 'icon-cover.png')
+                    ))
+        else:
+            episode_list(oc, info_node, thumb)
+
+    if len(oc) != 0:
+        return oc
+
+    return MessageContainer('Warning', 'No Show(s) Found')
+
 ######################################################################################
-@route(PREFIX + "/episode/detail", eid=int)
-def EpisodeDetail(title, url, eid):
+def episode_list(oc, node, thumb, season=None):
+    anode = node[0].xpath('./a')
+    for i, a in enumerate(anode):
+        href = a.get('href')
+        if season:
+            if int(href.rsplit('/', 2)[1][1:]) == season:
+                etitle = a.text_content()
+            else:
+                continue
+        else:
+            try:
+                s = node[0].xpath('./span')[i]
+                etitle = a.text_content() + ' ' + s.text_content()
+            except:
+                etitle = a.text_content()
+
+        oc.add(DirectoryObject(
+            key=Callback(EpisodeDetail, title=etitle, url=href),
+            title=etitle,
+            thumb=Resource.ContentsOfURLWithFallback(thumb, 'icon-cover.png')
+            ))
+    return
+
+######################################################################################
+@route(PREFIX + '/show/season', season=int)
+def SeasonDetail(title, season, thumb, url):
+
+    if DomainTest() != False:
+        return DomainTest()
+
+    oc = ObjectContainer(title1=title)
+
+    html = html_from_url(clean_url(url))
+
+    info_node = html.xpath('//div[@id="nameinfo"]')
+    if info_node:
+        episode_list(oc, info_node, thumb, season)
+
+    if len(oc) != 0:
+        return oc
+
+    return MessageContainer('Warning', 'No Episode(s) found for Season %i Found' %season)
+
+######################################################################################
+@route(PREFIX + "/episode/detail")
+def EpisodeDetail(title, url):
     """
     Gets metadata and google docs link from episode page.
     Checks for trailer availablity.
@@ -196,22 +248,38 @@ def EpisodeDetail(title, url, eid):
     if not wpm:
         return MessageContainer('Warning', 'No Video Source Found.')
 
-    page_text = HTTP.Request(clean_url(wpm[0])).content
-    r = Regex(r'[\'\"]\#part(\d+)[\'\"][^\#]+?src\=[\"\']([^\;\'\"]+)').findall(page_text)
-    if not r:
-        r0 = Regex(r'iframe\s+(?:id\=[\'\"]\w+[\'\"]\s+)?src\=[\"\']([^\;\'\"]+)').search(page_text)
-        if r0:
-            r = [(u'0', r0.group(1))]
-    if r:
-        for p, h in sorted(r):
-            gphtml = html_from_url(clean_url(h))
-            gp_iframe = gphtml.xpath('//iframe/@src')
-            if gp_iframe:
-                oc.add(VideoClipObject(
-                    title='%s-%s' %(p, ptitle) if int(p) != 0 else ptitle,
-                    thumb=Resource.ContentsOfURLWithFallback(thumb, 'icon-cover.png'),
-                    url=gp_iframe[0]
-                    ))
+    pass_html = html_from_url(clean_url(wpm[0]))
+    video_urls = []
+    source_iframe = pass_html.xpath('//iframe/@src')
+    if source_iframe:
+        part = 0
+        if pass_html.xpath('//div[starts-with(@id, "part")]'):
+            part = 1
+
+        try:
+            video_urls.append((part, html_from_url(clean_url(source_iframe[0])).xpath('//iframe/@src')[0]))
+        except Exception as e:
+            Log.Error('* EpisodeDetail Error: %s' %str(e))
+            pass
+
+        if part != 0:
+            base_iframe = source_iframe[0].split('.php')[0]
+            count = 1
+            more = True
+            while more and (count < 5):
+                count += 1
+                try:
+                    video_urls.append((count, html_from_url(clean_url(base_iframe + '%i.php' %count)).xpath('//iframe/@src')[0]))
+                except Exception as e:
+                    Log.Warn('* EpisodeDetail Warning: %s' %str(e))
+                    more = False
+
+        for p, u in sorted(video_urls):
+            oc.add(VideoClipObject(
+                title='%i-%s' %(p, ptitle) if p != 0 else ptitle,
+                thumb=Resource.ContentsOfURLWithFallback(thumb, 'icon-cover.png'),
+                url=u
+                ))
 
     trailpm = html.xpath('//iframe[@id="trailpm"]/@src')
     if trailpm:
@@ -221,10 +289,10 @@ def EpisodeDetail(title, url, eid):
             yttrailer_url = yttrailer[0] if yttrailer[0].startswith('http') else 'https:' + yttrailer[0]
             oc.add(VideoClipObject(url=yttrailer_url, thumb=R(ICON_SERIES), title="Watch Trailer"))
 
-    if len(oc) == 0:
-        return MessageContainer('Warning', 'No Media Found')
-    else:
+    if len(oc) != 0:
         return oc
+
+    return MessageContainer('Warning', 'No Media Found')
 
 ######################################################################################
 @route(PREFIX + "/genre/menu")
@@ -244,26 +312,61 @@ def GenreMenu(title):
             thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
             ))
 
-    return oc
+    if len(oc) != 0:
+        return oc
+
+    return MessageContainer('Warning', 'No Genre(s) Found')
+
+######################################################################################
+@route(PREFIX + "/search", page=int)
+def Search(query='', page=1):
+    if DomainTest() != False:
+        return DomainTest()
+
+    query = query.strip()
+    url = clean_url('/search.php?dayq=%s&page=%i' %(String.Quote(query, usePlus=True), page))
+
+    oc = ObjectContainer(title1='Search for \"%s\"' %query)
+
+    html = html_from_url(url)
+    for m in media_list(html, '/search'):
+        oc.add(DirectoryObject(
+            key=Callback(EpisodeDetail, title=m['title'], url=m['url']),
+            title=m['title'],
+            thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+            ))
+
+    nhref = next_page(html)
+    if nhref:
+        oc.add(NextPageObject(
+            key=Callback(Search, query=query, page=page+1),
+            title="More...",
+            thumb=R(ICON_NEXT)
+            ))
+
+    if len(oc) != 0:
+        return oc
+
+    return MessageContainer('Warning', 'Oops! No results were found. Please try a different word.')
 
 ######################################################################################
 def media_list(html, category, genre=False):
     """didn't want to write this over-and-over again"""
 
-    info_list = []
+    info_list = list()
     for each in html.xpath("//td[@class='topic_content']"):
         eid = int(Regex(r'goto\-(\d+)').search(each.xpath("./div/a/@href")[0]).group(1))
-        if 'movie' in category:
-            url = clean_url("%s/view.php?id=%i" %(category, eid))
-        else:
+        if category == '/latest' or category == '/search':
             url = clean_url("/view.php?id=%i" %eid)
+        else:
+            url = clean_url("%s/view.php?id=%i" %(category, eid))
 
         thumb = each.xpath("./div/a/img/@src")[0]
         thumb = thumb if thumb.startswith('http') else clean_url(thumb)
 
         title = thumb.rsplit("/",1)[1].rsplit("-",1)[0] if genre else each.xpath("./div/a/img/@alt")[0]
 
-        info_list.append({'title': title, 'thumb': thumb, 'url': url, 'id': eid})
+        info_list.append({'title': title, 'thumb': thumb, 'url': url})
 
     return info_list
 

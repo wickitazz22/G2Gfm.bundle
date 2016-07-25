@@ -54,20 +54,22 @@ Known Issues
 - No item summaries.
 - No metadata info on final video page due to Google Video link.
 - Source website has missing videos for some older content.
-- TV Show / Episodes sections removed from site.
-- Search function removed from site.
 
 
 Changelog
 =========
 
+**0.10** - 07/22/16 - Updated URL to cyro.se. Added back Search function.
+
+**0.09** - 06/17/16 - Added back TV Shows and Latests Episodes. Fixed video parse code.
+
 **0.08** - 06/08/16 - Fixed code for site changes. Added Site URL preference.
 
-**0.07** - 08/29/15 - Updated url to dayt.se.
+**0.07** - 08/29/15 - Updated URL to dayt.se.
 
-**0.06** - 08/23/15 - Updated url to atoz.se.
+**0.06** - 08/23/15 - Updated URL to atoz.se.
 
-**0.05** - 14/07/15 - Updated url to moviez.se.
+**0.05** - 14/07/15 - Updated URL to moviez.se.
 
 **0.04** - 19/11/14 - Removed search and bookmarks.
 
