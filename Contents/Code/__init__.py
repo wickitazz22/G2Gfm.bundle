@@ -80,14 +80,36 @@ def ValidatePrefs():
         Dict.Save()
 
     Log.Debug('*' * 80)
+    Dict['domain_test'] = 'Fail'
     try:
-        test = HTTP.Request(Dict['site_url'], cacheTime=0).headers
-        Log.Debug('* \"%s\" headers = %s' %(Dict['site_url'], test))
-        Dict['domain_test'] = 'Pass'
+        HTTP.ClearCookies()
+        if 'proxyunblocker' in Dict['site_url']:
+            proxy = 'http://proxyunblocker.org/'
+            site_url = Dict['site_url'].rsplit('.', 3)[0]
+            HTTP.Request(proxy, cacheTime=0).load()
+            cookies = HTTP.CookiesForURL(proxy)
+            r = Regex(r'csrftoken\=([^\;\s\_]+)').search(cookies)
+            csrftoken = r.group(1) if r else ''
+            values = {'url': site_url, 'csrfmiddlewaretoken': csrftoken}
+            try:
+                test = HTTP.Request('http://proxyunblocker.org/', values=values, follow_redirects=False).load()
+            except Ex.RedirectError, e:
+                if 'Location' in e.headers:
+                    new_url = e.headers['Location']
+                    nurl = new_url if not new_url.endswith('/') else new_url[:-1]
+                    if nurl == Dict['site_url']:
+                        cookies = '; '.join([c.split(';')[0].strip() for c in e.headers['Set-Cookie'].split(',')]) + '; ' + cookies
+                        HTTP.Headers['Cookie'] = cookies
+                        Log.Debug('* Cookies set for \'{}\''.format(Dict['site_url']))
+                        Log.Debug('* Cookies = \'{}\''.format(cookies))
+                        Dict['domain_test'] = 'Pass'
+        else:
+            test = HTTP.Request(Dict['site_url'], cacheTime=0).headers
+            Log.Debug('* \"%s\" headers = %s' %(Dict['site_url'], test))
+            Dict['domain_test'] = 'Pass'
     except:
         Log.Debug('* \"%s\" is not a valid domain for this channel.' %Dict['site_url'])
         Log.Debug('* Please pick a different URL')
-        Dict['domain_test'] = 'Fail'
     Log.Debug('*' * 80)
 
     Dict.Save()
@@ -119,13 +141,13 @@ def ShowCategory(title, category, href):
             oc.add(DirectoryObject(
                 key=Callback(EpisodeDetail, title=m['title'], url=m['url']),
                 title=m['title'],
-                thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+                thumb=Callback(get_thumb, url=m['thumb'])
                 ))
         else:
             oc.add(DirectoryObject(
                 key=Callback(TVShow, title=m['title'], thumb=m['thumb'], url=m['url']),
                 title=m['title'],
-                thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+                thumb=Callback(get_thumb, url=m['thumb'])
                 ))
 
     nhref = next_page(html)
@@ -166,7 +188,7 @@ def TVShow(title, thumb, url):
                 oc.add(DirectoryObject(
                     key=Callback(SeasonDetail, title=season.title(), season=int(i), thumb=thumb, url=url),
                     title=season.title(),
-                    thumb=Resource.ContentsOfURLWithFallback(thumb, 'icon-cover.png')
+                    thumb=Callback(get_thumb, url=thumb)
                     ))
         else:
             episode_list(oc, info_node, thumb)
@@ -196,7 +218,7 @@ def episode_list(oc, node, thumb, season=None):
         oc.add(DirectoryObject(
             key=Callback(EpisodeDetail, title=etitle, url=href),
             title=etitle,
-            thumb=Resource.ContentsOfURLWithFallback(thumb, 'icon-cover.png')
+            thumb=Callback(get_thumb, url=thumb)
             ))
     return
 
@@ -275,9 +297,11 @@ def EpisodeDetail(title, url):
                     more = False
 
         for p, u in sorted(video_urls):
+            if 'proxyunblocker' in u:
+                u = 'https://docs.google.com/file/' + u.split('/file/')[1]
             oc.add(VideoClipObject(
                 title='%i-%s' %(p, ptitle) if p != 0 else ptitle,
-                thumb=Resource.ContentsOfURLWithFallback(thumb, 'icon-cover.png'),
+                thumb=Callback(get_thumb, url=thumb),
                 url=u
                 ))
 
@@ -287,6 +311,8 @@ def EpisodeDetail(title, url):
         yttrailer = thtml.xpath('//iframe[@id="yttrailer"]/@src')
         if yttrailer:
             yttrailer_url = yttrailer[0] if yttrailer[0].startswith('http') else 'https:' + yttrailer[0]
+            if 'proxyunblocker' in yttrailer_url:
+                yttrailer_url = 'http://www.youtube.com/embed/' + yttrailer_url.split('/embed/')[1]
             oc.add(VideoClipObject(url=yttrailer_url, thumb=R(ICON_SERIES), title="Watch Trailer"))
 
     if len(oc) != 0:
@@ -309,7 +335,7 @@ def GenreMenu(title):
         oc.add(DirectoryObject(
             key=Callback(ShowCategory, title=m['title'], category='/movies', href=m['url']),
             title=m['title'],
-            thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+            thumb=Callback(get_thumb, url=m['thumb'])
             ))
 
     if len(oc) != 0:
@@ -333,7 +359,7 @@ def Search(query='', page=1):
         oc.add(DirectoryObject(
             key=Callback(EpisodeDetail, title=m['title'], url=m['url']),
             title=m['title'],
-            thumb=Resource.ContentsOfURLWithFallback(m['thumb'], 'icon-cover.png')
+            thumb=Callback(get_thumb, url=m['thumb'])
             ))
 
     nhref = next_page(html)
@@ -403,3 +429,32 @@ def clean_url(href):
         url = Dict['site_url'] + (href if href.startswith('/') else '/' + href)
 
     return url
+
+######################################################################################
+@route(PREFIX + '/get_thumb')
+def get_thumb(url, fallback_icon=None, fallback_url=None):
+    if 'proxyunblocker' in url:
+        r = HTTP.Request(url, immediate=True, method='GET')
+        if r:
+            img_data = r.content
+            if img_data:
+                ext = '.'+url.rsplit('.', 1)[1]
+                mime_type = {
+                    '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+                    '.gif': 'image/gif',  '.tiff': 'image/tiff', '.bmp': 'image/bmp'
+                    }.get(ext, '*/*')
+
+                return DataObject(img_data, mime_type)
+            else:
+                Log.Error(u'* No image data for \'{}\''.format(url))
+        else:
+            Log.Error(u'* Cannot access \'{}\''.format(url))
+    elif url:
+        return Redirect(url)
+
+    if fallback_icon:
+        return Redirect(R(fallback_icon))
+    elif fallback_url:
+        return Redirect(fallback_url)
+
+    return Redirect(R(ICON_COVER))
