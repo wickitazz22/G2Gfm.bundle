@@ -83,33 +83,42 @@ def ValidatePrefs():
     Dict['domain_test'] = 'Fail'
     try:
         HTTP.ClearCookies()
-        if 'proxyunblocker' in Dict['site_url']:
-            proxy = 'http://proxyunblocker.org/'
-            site_url = Dict['site_url'].rsplit('.', 3)[0]
+        if 'prx.proxy' in Dict['site_url']:
+            proxy = Dict['site_url'].replace('cyro.se.prx.', '') + '/'
+            site_url = Dict['site_url'].split('.prx')[0]
             HTTP.Request(proxy, cacheTime=0).load()
             cookies = HTTP.CookiesForURL(proxy)
             r = Regex(r'csrftoken\=([^\;\s\_]+)').search(cookies)
             csrftoken = r.group(1) if r else ''
             values = {'url': site_url, 'csrfmiddlewaretoken': csrftoken}
             try:
-                test = HTTP.Request('http://proxyunblocker.org/', values=values, follow_redirects=False).load()
+                http_headers = {'Cookie': cookies, 'Referer': proxy}
+                req = HTTP.Request(proxy, values=values, follow_redirects=False, headers=http_headers, cacheTime=0).load()
+                nurl = proxy[:-1]
             except Ex.RedirectError, e:
+                nurl = None
                 if 'Location' in e.headers:
                     new_url = e.headers['Location']
                     nurl = new_url if not new_url.endswith('/') else new_url[:-1]
-                    if nurl == Dict['site_url']:
-                        cookies = '; '.join([c.split(';')[0].strip() for c in e.headers['Set-Cookie'].split(',')]) + '; ' + cookies
-                        HTTP.Headers['Cookie'] = cookies
-                        Log.Debug('* Cookies set for \'{}\''.format(Dict['site_url']))
-                        Log.Debug('* Cookies = \'{}\''.format(cookies))
-                        Dict['domain_test'] = 'Pass'
+                elif 'location' in e.headers:
+                    new_url = e.headers['location']
+                    nurl = new_url if not new_url.endswith('/') else new_url[:-1]
+
+            if nurl == Dict['site_url']:
+                cookies = '; '.join([c.split(';')[0].strip() for c in e.headers['Set-Cookie'].split(',')]) + '; ' + cookies
+                HTTP.Headers['Cookie'] = cookies
+                Log.Debug('* Cookies set for \'{}\''.format(Dict['site_url']))
+                Log.Debug('* Cookies = \'{}\''.format(cookies))
+                Dict['domain_test'] = 'Pass'
+            else:
+                Log.Error(u"* Cannot verify '{0}'".format(proxy))
         else:
             test = HTTP.Request(Dict['site_url'], cacheTime=0).headers
             Log.Debug('* \"%s\" headers = %s' %(Dict['site_url'], test))
             Dict['domain_test'] = 'Pass'
     except:
-        Log.Debug('* \"%s\" is not a valid domain for this channel.' %Dict['site_url'])
-        Log.Debug('* Please pick a different URL')
+        Log.Warn(u"* '{0}' is not a valid domain for this channel.".format(Dict['site_url']))
+        Log.Warn('* Please pick a different URL')
     Log.Debug('*' * 80)
 
     Dict.Save()
@@ -297,7 +306,7 @@ def EpisodeDetail(title, url):
                     more = False
 
         for p, u in sorted(video_urls):
-            if 'proxyunblocker' in u:
+            if 'prx.proxy' in u:
                 u = 'https://docs.google.com/file/' + u.split('/file/')[1]
             oc.add(VideoClipObject(
                 title='%i-%s' %(p, ptitle) if p != 0 else ptitle,
@@ -311,7 +320,7 @@ def EpisodeDetail(title, url):
         yttrailer = thtml.xpath('//iframe[@id="yttrailer"]/@src')
         if yttrailer:
             yttrailer_url = yttrailer[0] if yttrailer[0].startswith('http') else 'https:' + yttrailer[0]
-            if 'proxyunblocker' in yttrailer_url:
+            if 'prx.proxy' in yttrailer_url:
                 yttrailer_url = 'http://www.youtube.com/embed/' + yttrailer_url.split('/embed/')[1]
             oc.add(VideoClipObject(url=yttrailer_url, thumb=R(ICON_SERIES), title="Watch Trailer"))
 
@@ -433,7 +442,7 @@ def clean_url(href):
 ######################################################################################
 @route(PREFIX + '/get_thumb')
 def get_thumb(url, fallback_icon=None, fallback_url=None):
-    if 'proxyunblocker' in url:
+    if 'prx.proxy' in url:
         r = HTTP.Request(url, immediate=True, method='GET')
         if r:
             img_data = r.content
