@@ -59,6 +59,8 @@ Known Issues
 Changelog
 =========
 
+**0.11** - 09/18/16 - Updated mirror URL from g2gfm.eu to proxyunblocker.org and proxywebsite.co.uk.
+
 **0.10** - 07/22/16 - Updated URL to cyro.se. Added back Search function.
 
 **0.09** - 06/17/16 - Added back TV Shows and Latests Episodes. Fixed video parse code.

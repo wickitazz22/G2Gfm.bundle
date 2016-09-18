@@ -3,7 +3,7 @@
     "id": "site_url",
     "type": "enum",
     "label": "Site URL",
-    "values": ["http://cyro.se", "http://g2gfm.eu"],
+    "values": ["http://cyro.se", "http://cyro.se.prx.proxyunblocker.org", "http://cyro.se.prx.proxywebsite.co.uk"],
     "default": "http://cyro.se"
   }
 ]
