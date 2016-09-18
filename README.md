@@ -59,7 +59,7 @@ Known Issues
 Changelog
 =========
 
-**0.11** - 08/13/16 - Updated mirror URL from g2gfm.eu to proxyunblocker.org.
+**0.11** - 09/18/16 - Updated mirror URL from g2gfm.eu to proxyunblocker.org and proxywebsite.co.uk.
 
 **0.10** - 07/22/16 - Updated URL to cyro.se. Added back Search function.
 
