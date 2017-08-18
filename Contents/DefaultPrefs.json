@@ -3,7 +3,8 @@
     "id": "site_url",
     "type": "enum",
     "label": "Site URL",
-    "values": ["http://cyro.se", "http://cyro.se.prx.proxyunblocker.org", "http://cyro.se.prx.proxywebsite.co.uk"],
-    "default": "http://cyro.se"
+    "values": ["http://xPau.se", "http://xPau.se.prx.proxyunblocker.org", "http://xPau.se.prx.proxywebsite.co.uk"],
+    "default": "http://xPau.se"
   }
 ]
+
